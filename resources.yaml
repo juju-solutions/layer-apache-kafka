@@ -1,0 +1,7 @@
+options:
+  output_dir: /home/ubuntu/resources
+optional_resources:
+  kafka-x86_64:
+    url: https://s3.amazonaws.com/jujubigdata/apache/x86_64/kafka_2.10-0.8.2.1-89ede9a.tgz
+    hash: 89ede9ae0f51f7163c4140d8ab43fcedf8eb3066bb8058f3d97f75e9868899ce
+    hash_type: sha256

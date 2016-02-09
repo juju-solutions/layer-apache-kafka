@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+import sys
+import kafkautils
+
+try:
+    from charmhelpers.core import host
+    from charmhelpers.core import hookenv
+    from charmhelpers.core import unitdata
+    from jujubigdata import utils
+    charm_ready = True
+except ImportError:
+    charm_ready = False
+
+if not charm_ready:
+    # might not have hookenv.action_fail available yet
+    from subprocess import call
+    call(['action-fail', 'Kafka service not yet ready'])
+    sys.exit(1)
+
+# Grab the business
+topic_name = hookenv.action_get('topic')
+
+# Delete the topic if we've got zookeepers; otherwise fail.
+if host.service_available('kafka') and host.service_running('kafka'):
+    zookeepers = kafkautils.get_zookeepers()
+    output = utils.run_as('kafka', 'kafka-topics.sh',
+                          '--zookeeper', zookeepers, '--delete',
+                          '--topic',  topic_name,
+                          capture_output=True)
+    hookenv.action_set({'output': output})
+    sys.exit(0)
+else:
+    hookenv.action_fail('Zookeeper relation is not present/ready')
+    sys.exit(1)
