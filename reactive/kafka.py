@@ -82,3 +82,12 @@ def reconfigure_kafka_zk_instances_leaving(zkdeparting, zkavailable):
         kafka.stop()
         remove_state('kafka.started')
         hookenv.status_set('blocked', 'Waiting for connection to Zookeeper')
+
+
+@when('kafka.connected')
+@when_not('kafka.available')
+def waiting_availuable_flume(kafka_client):
+    port = dist_config().exposed_ports('kafka')[0]
+    kafka_client.send_configuration(port)    
+    hookenv.log('Sending configuration to client')
+
