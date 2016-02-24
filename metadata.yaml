@@ -1,5 +1,5 @@
 name: apache-kafka
-maintainer: Canonical Big Data Team <bigdata@lists.ubuntu.com>
+maintainer: Juju Big Data <bigdata@lists.ubuntu.com>
 summary: High-performance pub/sub as distributed commit log.
 description: |
   Fast
@@ -28,4 +28,3 @@ provides:
 requires:
   zookeeper:
     interface: zookeeper
-    
