@@ -1,9 +1,10 @@
 import os
+import signal
 from subprocess import Popen
 
 import jujuresources
+from charmhelpers.core import unitdata, hookenv
 from jujubigdata import utils
-from charmhelpers.core import unitdata, templating, hookenv, host
 
 
 class Kafka(object):
@@ -71,22 +72,13 @@ class Kafka(object):
 
         # fix for lxc containers and some corner cases in manual provider
         # ensure that public_address is resolvable internally by mapping it to the private IP
-        utils.update_etc_hosts({private_ip: public_address})
+        utils.update_kv_host(private_ip, public_address)
+        utils.manage_etc_hosts()
 
-        templating.render(
-            'upstart.conf',
-            '/etc/init/kafka.conf',
-            context={
-                'kafka_conf': self.dist_config.path('kafka_conf'),
-                'kafka_bin': '{}/bin'.format(self.dist_config.path('kafka'))
-            },
-        )
-        
     def open_ports(self):
         for port in self.dist_config.exposed_ports('kafka'):
             hookenv.open_port(port)
 
-    
     def configure_kafka(self, zk_units):
         # Get ip:port data from our connected zookeepers
         if not zk_units:
@@ -99,13 +91,13 @@ class Kafka(object):
                 zks.append("%s:%s" % (ip, port))
             zks.sort()
             zk_connect = ",".join(zks)
-    
+
             # update consumer props
             cfg = self.dist_config.path('kafka_conf') / 'consumer.properties'
             utils.re_edit_in_place(cfg, {
                 r'^zookeeper.connect=.*': 'zookeeper.connect=%s' % zk_connect,
             })
-    
+
             # update server props
             cfg = self.dist_config.path('kafka_conf') / 'server.properties'
             utils.re_edit_in_place(cfg, {
@@ -129,10 +121,17 @@ class Kafka(object):
         self.start()
 
     def start(self):
-        host.service_start('kafka')
+        kafka_conf = self.dist_config.path('kafka_conf')
+        kafka_bin = self.dist_config.path('kafka') / 'bin'
+        self.stop()
+        self.run_bg('kafka',
+                    kafka_bin / 'kafka-server-start.sh',
+                    kafka_conf / 'server.properties')
 
     def stop(self):
-        host.service_stop('kafka')
+        kafka_pids = utils.jps('kafka.Kafka')
+        for pid in kafka_pids:
+            os.kill(int(pid), signal.SIGKILL)
 
     def cleanup(self):
         self.dist_config.remove_users()
