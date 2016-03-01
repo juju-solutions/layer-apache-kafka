@@ -46,6 +46,32 @@ And finally, we can delete a topic with:
     juju action do kafka/0 delete-topic topic=<topic_name>
     juju action fetch <id>  # <-- id from above command
 
+
+### Setting up a multinode cluster
+
+Creating a cluster with many brokers is as easy as adding more units to your kafka service:
+
+    juju add-unit kafka
+
+After that you will be able to create topics with replication up to the number of units.
+
+To verify replication is working you can do the following:
+
+    juju add-unit kafka -n 2
+    juju action do kafka/0 create-topic topic=my-replicated-topic \
+     partitions=1 replication=2
+    juju ssh kafka/0
+
+Query for the description of the just created topic:
+
+    kafka-topics.sh --describe --topic my-replicated-topic --zookeeper <zookeeperip>:2181
+
+You should get a response similar to:
+
+    Topic:my-replicated-topic	PartitionCount:1	ReplicationFactor:2	Configs:
+	 Topic: my-replicated-topic	Partition: 0	Leader: 2	Replicas: 2,0	Isr: 2,0
+
+
 ## Deploying in Network-Restricted Environments
 This charm can be deployed in environments with limited network access. To
 deploy in this environment, you will need a local mirror to serve the packages
