@@ -5,10 +5,10 @@ vendor: 'apache'
 packages:
     - 'openjdk-7-jdk'
 groups:
-    - 'hadoop'
+    - kafka
 users:
     kafka:
-        groups: ['hadoop']
+        groups: ['kafka']
 dirs:
     kafka:
         path: '/usr/lib/kafka'

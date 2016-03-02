@@ -23,7 +23,7 @@ description: |
   fault-tolerance guarantees.
 tags: ["bigdata", "apache"]
 provides:
-  kafka:
+  client:
     interface: kafka
 requires:
   zookeeper:
