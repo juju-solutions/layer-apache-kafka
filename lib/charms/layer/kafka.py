@@ -70,17 +70,20 @@ class Kafka(object):
         })
 
         template_name = 'upstart.conf'
+        template_path = '/etc/init/kafka.conf'
         if host.init_is_systemd():
             template_name = 'systemd.conf'
+            template_path = '/etc/systemd/system/kafka.service'
 
         templating.render(
-            template_name,		
-            '/etc/init/kafka.conf',		
-            context={		
-                'kafka_conf': self.dist_config.path('kafka_conf'),		
-                'kafka_bin': '{}/bin'.format(self.dist_config.path('kafka'))		
-            },		
+            template_name,
+            template_path,
+            context={
+                'kafka_conf': self.dist_config.path('kafka_conf'),
+                'kafka_bin': '{}/bin'.format(self.dist_config.path('kafka'))
+            },
         )
+
         # fix for lxc containers and some corner cases in manual provider
         # ensure that public_address is resolvable internally by mapping it to the private IP
         utils.update_kv_host(private_ip, public_address)
