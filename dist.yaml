@@ -2,8 +2,6 @@
 # The aim is to make it easier to update / extend the charms with
 # minimal changes to the shared code in the jujubigdata library.
 vendor: 'apache'
-packages:
-    - 'openjdk-7-jdk'
 groups:
     - kafka
 users:

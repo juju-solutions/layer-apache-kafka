@@ -17,7 +17,7 @@ if not charm_ready:
     call(['action-fail', 'Kafka service not yet ready'])
     sys.exit(1)
 
-kafka_reqs = ['vendor', 'packages', 'groups', 'users', 'dirs', 'ports']
+kafka_reqs = ['vendor', 'groups', 'users', 'dirs', 'ports']
 dist_config = jujubigdata.utils.DistConfig(filename='dist.yaml',
                                            required_keys=kafka_reqs)
 

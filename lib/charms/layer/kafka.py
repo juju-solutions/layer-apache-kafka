@@ -18,7 +18,6 @@ class Kafka(object):
     def install(self):
         self.dist_config.add_users()
         self.dist_config.add_dirs()
-        self.dist_config.add_packages()
         jujuresources.install(self.resources['kafka'],
                               destination=self.dist_config.path('kafka'),
                               skip_top_level=True)
