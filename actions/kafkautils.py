@@ -1,6 +1,7 @@
 import re
 import yaml
 
+
 def get_zookeepers():
     with open("dist.yaml", 'r') as distconf:
         config = yaml.load(distconf)
