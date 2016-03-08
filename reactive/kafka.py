@@ -54,7 +54,7 @@ def reconfigure_kafka_zookeepers(zk):
 
 @when('kafka.started')
 @when_not('zookeeper.ready')
-def stop_kafka_waiting_for_zookeeper_ready(zk):
+def stop_kafka_waiting_for_zookeeper_ready():
     hookenv.status_set('maintenance', 'Zookeeper not ready, stopping Kafka')
     kafka = Kafka()
     kafka.stop()
@@ -62,7 +62,7 @@ def stop_kafka_waiting_for_zookeeper_ready(zk):
     hookenv.status_set('waiting', 'Waiting for Zookeeper to become ready')
 
 
-@when('client.joined', 'zookeeper.available')
+@when('client.joined', 'zookeeper.ready')
 def serve_client(client, zookeeper):
     kafka_port = DistConfig().port('kafka')
     client.send_port(kafka_port)
