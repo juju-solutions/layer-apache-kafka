@@ -1,4 +1,4 @@
-from charms.reactive import when, when_not
+from charms.reactive import when, when_file_changed, when_not
 from charms.reactive import set_state, remove_state
 
 from charmhelpers.core import hookenv
@@ -48,6 +48,13 @@ def reconfigure_kafka_zookeepers(zk):
     kafka = Kafka()
     zks = zk.zookeepers()
     kafka.configure_kafka(zks)
+
+
+@when('kafka.started')
+@when_file_changed(DistConfig().path('kafka_conf') / 'server.properties')
+def restart_kafka():
+    hookenv.status_set('maintenance', 'Server config changed: restarting Kafka')
+    kafka = Kafka()
     kafka.restart()
     hookenv.status_set('active', 'Ready')
 

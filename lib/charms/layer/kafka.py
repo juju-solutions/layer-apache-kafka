@@ -87,28 +87,24 @@ class Kafka(object):
 
     def configure_kafka(self, zk_units):
         # Get ip:port data from our connected zookeepers
-        if not zk_units:
-            # if we have no zookeepers, make sure kafka is stopped
-            self.stop()
-        else:
-            zks = []
-            for unit in zk_units:
-                ip = utils.resolve_private_address(unit['host'])
-                zks.append("%s:%s" % (ip, unit['port']))
-            zks.sort()
-            zk_connect = ",".join(zks)
+        zks = []
+        for unit in zk_units:
+            ip = utils.resolve_private_address(unit['host'])
+            zks.append("%s:%s" % (ip, unit['port']))
+        zks.sort()
+        zk_connect = ",".join(zks)
 
-            # update consumer props
-            cfg = self.dist_config.path('kafka_conf') / 'consumer.properties'
-            utils.re_edit_in_place(cfg, {
-                r'^zookeeper.connect=.*': 'zookeeper.connect=%s' % zk_connect,
-            })
+        # update consumer props
+        cfg = self.dist_config.path('kafka_conf') / 'consumer.properties'
+        utils.re_edit_in_place(cfg, {
+            r'^zookeeper.connect=.*': 'zookeeper.connect=%s' % zk_connect,
+        })
 
-            # update server props
-            cfg = self.dist_config.path('kafka_conf') / 'server.properties'
-            utils.re_edit_in_place(cfg, {
-                r'^zookeeper.connect=.*': 'zookeeper.connect=%s' % zk_connect,
-            })
+        # update server props
+        cfg = self.dist_config.path('kafka_conf') / 'server.properties'
+        utils.re_edit_in_place(cfg, {
+            r'^zookeeper.connect=.*': 'zookeeper.connect=%s' % zk_connect,
+        })
 
     def restart(self):
         self.stop()
