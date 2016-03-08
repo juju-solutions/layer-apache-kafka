@@ -1,1 +1,5 @@
 includes: ['layer:basic', 'interface:zookeeper', 'interface:kafka']
+options:
+  basic:
+    packages:
+      - default-jre-headless
