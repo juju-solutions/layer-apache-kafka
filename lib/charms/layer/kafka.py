@@ -3,24 +3,19 @@ import signal
 from subprocess import Popen
 
 import jujuresources
-from charmhelpers.core import unitdata, hookenv
+from charmhelpers.core import hookenv
 from jujubigdata import utils
 
 
 class Kafka(object):
-    def __init__(self, dist_config):
-        self.dist_config = dist_config
+    def __init__(self, dist_config=None):
+        self.dist_config = dist_config or utils.DistConfig()
         self.resources = {
             'kafka': 'kafka-%s' % utils.cpu_arch(),
         }
         self.verify_resources = utils.verify_resources(*self.resources.values())
 
-    def is_installed(self):
-        return unitdata.kv().get('kafka.installed')
-
-    def install(self, force=False):
-        if not force and self.is_installed():
-            return
+    def install(self):
         self.dist_config.add_users()
         self.dist_config.add_dirs()
         self.dist_config.add_packages()
@@ -28,7 +23,6 @@ class Kafka(object):
                               destination=self.dist_config.path('kafka'),
                               skip_top_level=True)
         self.setup_kafka_config()
-        unitdata.kv().set('kafka.installed', True)
 
     def setup_kafka_config(self):
         '''
@@ -86,9 +80,9 @@ class Kafka(object):
             self.stop()
         else:
             zks = []
-            for remote_address, port in zk_units:
-                ip = utils.resolve_private_address(remote_address)
-                zks.append("%s:%s" % (ip, port))
+            for unit in zk_units:
+                ip = utils.resolve_private_address(unit['host'])
+                zks.append("%s:%s" % (ip, unit['port']))
             zks.sort()
             zk_connect = ",".join(zks)
 

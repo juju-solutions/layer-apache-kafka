@@ -3,5 +3,5 @@ options:
         type: string
         default: ''
         description: |
-            URL from which to fetch resources (e.g., Hadoop binaries) instead of Launchpad.
-
+            URL used to fetch resources (e.g., Kafka binaries) instead of the
+            location specified in resources.yaml.
