@@ -44,7 +44,7 @@ def configure_kafka(zk):
 
 @when('kafka.started', 'zookeeper.ready')
 def reconfigure_kafka_zookeepers(zk):
-    hookenv.status_set('maintenance', 'Updating Kafka with Zookeeper config')
+    hookenv.log('Updating Kafka with current Zookeeper config')
     kafka = Kafka()
     zks = zk.zookeepers()
     kafka.configure_kafka(zks)
