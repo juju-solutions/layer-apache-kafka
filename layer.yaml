@@ -1,3 +1,4 @@
+repo: git@github.com:juju-solutions/layer-apache-kafka.git
 includes: ['layer:basic', 'interface:zookeeper', 'interface:kafka']
 options:
   basic:
