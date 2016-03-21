@@ -5,7 +5,6 @@ import kafkautils
 try:
     from charmhelpers.core import host
     from charmhelpers.core import hookenv
-    from charmhelpers.core import unitdata
     charm_ready = True
 except ImportError:
     charm_ready = False

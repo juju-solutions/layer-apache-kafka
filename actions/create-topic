@@ -3,7 +3,7 @@ import sys
 import kafkautils
 
 try:
-    from charmhelpers.core import host, hookenv, unitdata
+    from charmhelpers.core import host, hookenv
     from jujubigdata import utils
     charm_ready = True
 except ImportError:

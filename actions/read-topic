@@ -4,8 +4,6 @@ import sys
 
 try:
     from charmhelpers.core import hookenv
-    from charmhelpers.core import unitdata
-    import jujubigdata
     from jujubigdata import utils
     charm_ready = True
 except ImportError:
@@ -17,10 +15,6 @@ if not charm_ready:
     call(['action-fail', 'Kafka service not yet ready'])
     sys.exit(1)
 
-kafka_reqs = ['vendor', 'groups', 'users', 'dirs', 'ports']
-dist_config = jujubigdata.utils.DistConfig(filename='dist.yaml',
-                                           required_keys=kafka_reqs)
-
 # Grab the business
 topic_name = hookenv.action_get('topic')
 topic_partition = hookenv.action_get('partition')
@@ -28,8 +22,8 @@ topic_partition = hookenv.action_get('partition')
 output = utils.run_as(
     'kafka', 'kafka-simple-consumer-shell.sh',
     '--broker-list', '{}:{}'.format(
-        hookenv.unit_private_ip(),
-        dist_config.port('kafka'),
+        hookenv.unit_get('public-address'),
+        utils.DistConfig().port('kafka'),
     ),
     '--topic', topic_name,
     '--partition', topic_partition,
