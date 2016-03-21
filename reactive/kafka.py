@@ -1,10 +1,7 @@
-from charms.reactive import when, when_file_changed, when_not
-from charms.reactive import set_state, remove_state
-
 from charmhelpers.core import hookenv
-
 from charms.layer.kafka import Kafka
-
+from charms.reactive import set_state, remove_state, when, when_not
+from charms.reactive.helpers import any_file_changed
 from jujubigdata.utils import DistConfig
 
 
@@ -43,20 +40,23 @@ def configure_kafka(zk):
 
 
 @when('kafka.started', 'zookeeper.ready')
-def reconfigure_kafka_zookeepers(zk):
-    hookenv.log('Updating Kafka with current Zookeeper config')
+def configure_kafka_zookeepers(zk):
+    """Configure ready zookeepers and restart kafka if needed.
+
+    As zks come and go, server.properties will be updated. When that file
+    changes, restart Kafka and set appropriate status messages.
+    """
+    hookenv.log('Checking Zookeeper configuration')
     kafka = Kafka()
     zks = zk.zookeepers()
     kafka.configure_kafka(zks)
 
-
-@when('kafka.started')
-@when_file_changed(DistConfig().path('kafka_conf') / 'server.properties')
-def restart_kafka():
-    hookenv.status_set('maintenance', 'Server config changed: restarting Kafka')
-    kafka = Kafka()
-    kafka.restart()
-    hookenv.status_set('active', 'Ready')
+    server_cfg = DistConfig().path('kafka_conf') / 'server.properties'
+    if any_file_changed([server_cfg]):
+        hookenv.status_set('maintenance', 'Server config changed: restarting Kafka')
+        hookenv.log('Server config changed: restarting Kafka')
+        kafka.restart()
+        hookenv.status_set('active', 'Ready')
 
 
 @when('kafka.started')
