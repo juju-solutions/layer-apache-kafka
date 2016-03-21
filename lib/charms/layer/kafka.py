@@ -36,26 +36,45 @@ class Kafka(object):
         default_conf.rmtree_p()
         kafka_conf.symlink(default_conf)
 
-        # Configure immutable bits
+        # Similarly, we've seen issues where kafka wants to write to
+        # KAFKA_HOME/logs regardless of the LOG_DIR, so make a symlink.
+        default_logs = self.dist_config.path('kafka') / 'logs'
+        kafka_logs = self.dist_config.path('kafka_app_logs')
+        default_logs.rmtree_p()
+        kafka_logs.symlink(default_logs)
+
+        # Configure environment
         kafka_bin = self.dist_config.path('kafka') / 'bin'
         with utils.environment_edit_in_place('/etc/environment') as env:
             if kafka_bin not in env['PATH']:
                 env['PATH'] = ':'.join([env['PATH'], kafka_bin])
             env['LOG_DIR'] = self.dist_config.path('kafka_app_logs')
 
+        # Configure server.properties
         # note: we set the advertised.host.name below to the public_address
         # to ensure that external (non-Juju) clients can connect to Kafka
         public_address = hookenv.unit_get('public-address')
         private_ip = utils.resolve_private_address(hookenv.unit_get('private-address'))
+        kafka_port = self.dist_config.port('kafka')
         kafka_server_conf = self.dist_config.path('kafka_conf') / 'server.properties'
         service, unit_num = os.environ['JUJU_UNIT_NAME'].split('/', 1)
         utils.re_edit_in_place(kafka_server_conf, {
             r'^broker.id=.*': 'broker.id=%s' % unit_num,
-            r'^port=.*': 'port=%s' % self.dist_config.port('kafka'),
+            r'^port=.*': 'port=%s' % kafka_port,
             r'^log.dirs=.*': 'log.dirs=%s' % self.dist_config.path('kafka_data_logs'),
             r'^#?advertised.host.name=.*': 'advertised.host.name=%s' % public_address,
         })
 
+        # Configure producer.properties
+        # note: we set the broker list host below to the public_address
+        # to ensure that external (non-Juju) clients can connect to Kafka.
+        # It must match our advertised.host.name from above.
+        kafka_producer_conf = self.dist_config.path('kafka_conf') / 'producer.properties'
+        utils.re_edit_in_place(kafka_producer_conf, {
+            r'^#?metadata.broker.list=.*': 'metadata.broker.list=%s:%s' % (public_address, kafka_port),
+        })
+
+        # Configure log properties
         kafka_log4j = self.dist_config.path('kafka_conf') / 'log4j.properties'
         utils.re_edit_in_place(kafka_log4j, {
             r'^kafka.logs.dir=.*': 'kafka.logs.dir=%s' % self.dist_config.path('kafka_app_logs'),
