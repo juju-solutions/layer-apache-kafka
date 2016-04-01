@@ -1,5 +1,5 @@
 from charmhelpers.core import hookenv
-from charms.layer.kafka import Kafka
+from charms.layer.apache_kafka import Kafka
 from charms.reactive import set_state, remove_state, when, when_not
 from charms.reactive.helpers import any_file_changed
 from jujubigdata.utils import DistConfig

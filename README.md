@@ -1,4 +1,5 @@
 ## Overview
+
 Apache Kafka is an open-source message broker project developed by the Apache
 Software Foundation written in Scala. The project aims to provide a unified,
 high-throughput, low-latency platform for handling real-time data feeds. Learn
@@ -6,6 +7,7 @@ more at [kafka.apache.org](http://kafka.apache.org/).
 
 
 ## Usage
+
 Kafka requires the Zookeeper distributed coordination service. Deploy and
 relate them as follows:
 
@@ -47,42 +49,48 @@ And finally, we can delete a topic with:
     juju action fetch <id>  # <-- id from above command
 
 
-### Setting up a multinode cluster
+## Scaling
 
-Creating a cluster with many brokers is as easy as adding more units to your kafka service:
+Creating a cluster with many brokers is as easy as adding more units to your
+Kafka service:
 
     juju add-unit kafka
 
-After that you will be able to create topics with replication up to the number of units.
+After adding additional brokers, you will be able to create topics with
+replication up to the number of kafka units.
 
 To verify replication is working you can do the following:
 
     juju add-unit kafka -n 2
     juju action do kafka/0 create-topic topic=my-replicated-topic \
-     partitions=1 replication=2
-    juju ssh kafka/0
+        partitions=1 replication=2
 
 Query for the description of the just created topic:
 
-    kafka-topics.sh --describe --topic my-replicated-topic --zookeeper <zookeeperip>:2181
+    juju ssh kafka/0
+    kafka-topics.sh --describe --topic my-replicated-topic \
+        --zookeeper <zookeeperip>:2181
 
 You should get a response similar to:
 
-    Topic:my-replicated-topic	PartitionCount:1	ReplicationFactor:2	Configs:
-	 Topic: my-replicated-topic	Partition: 0	Leader: 2	Replicas: 2,0	Isr: 2,0
+    Topic: my-replicated-topic PartitionCount:1 ReplicationFactor:2 Configs:
+    Topic: my-replicated-topic Partition: 0 Leader: 2 Replicas: 2,0 Isr: 2,0
 
 
 ## Deploying in Network-Restricted Environments
+
 This charm can be deployed in environments with limited network access. To
 deploy in this environment, you will need a local mirror to serve the packages
 and resources required by this charm.
 
 ### Mirroring Packages
+
 You can setup a local mirror for apt packages using squid-deb-proxy.
 For instructions on configuring juju to use this, see the
 [Juju Proxy Documentation](https://juju.ubuntu.com/docs/howto-proxies.html).
 
 ### Mirroring Resources
+
 In addition to apt packages, this charm requires a few binary resources
 which are normally hosted on Launchpad. If access to Launchpad is not
 available, the `jujuresources` library makes it easy to create a mirror

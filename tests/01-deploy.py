@@ -1,22 +1,25 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
+
 import unittest
 import amulet
 
 
 class TestDeploy(unittest.TestCase):
     """
-    Deployment test for Apache Kafka
+    Trivial deployment test for Apache Kafka.
+
+    This charm cannot do anything useful by itself, so integration testing
+    is done in the bundle.
     """
 
     @classmethod
     def setUpClass(cls):
         cls.d = amulet.Deployment(series='trusty')
-        # Deploy Kafka Service
-        cls.d.add('kafka', charm='cs:~bigdata-dev/trusty/apache-kafka')
-        cls.d.add('zookeeper', charm='cs:~bigdata-dev/trusty/apache-zookeeper')
+        cls.d.add('kafka', 'apache-kafka')
+        cls.d.add('zookeeper', 'apache-zookeeper')
         cls.d.relate('kafka:zookeeper', 'zookeeper:zookeeper')
 
-        cls.d.setup(timeout=1800)
+        cls.d.setup(timeout=900)
         cls.d.sentry.wait(timeout=1800)
         cls.unit = cls.d.sentry['kafka'][0]
 
