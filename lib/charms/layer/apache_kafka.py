@@ -3,6 +3,8 @@ import os
 import jujuresources
 from charmhelpers.core import hookenv, templating, host
 from jujubigdata import utils
+from path import Path
+from subprocess import check_call
 
 
 class Kafka(object):
@@ -54,7 +56,6 @@ class Kafka(object):
         # note: we set the advertised.host.name below to the public_address
         # to ensure that external (non-Juju) clients can connect to Kafka
         public_address = hookenv.unit_get('public-address')
-        private_ip = utils.resolve_private_address(hookenv.unit_get('private-address'))
         kafka_port = self.dist_config.port('kafka')
         kafka_server_conf = self.dist_config.path('kafka_conf') / 'server.properties'
         service, unit_num = os.environ['JUJU_UNIT_NAME'].split('/', 1)
@@ -66,9 +67,8 @@ class Kafka(object):
         })
 
         # Configure producer.properties
-        # note: we set the broker list host below to the public_address
-        # to ensure that external (non-Juju) clients can connect to Kafka.
-        # It must match our advertised.host.name from above.
+        # note: we set the broker list to whatever we advertise our broker to
+        # be (advertised.host.name from above, which is our public_address).
         kafka_producer_conf = self.dist_config.path('kafka_conf') / 'producer.properties'
         utils.re_edit_in_place(kafka_producer_conf, {
             r'^#?metadata.broker.list=.*': 'metadata.broker.list=%s:%s' % (public_address, kafka_port),
@@ -80,6 +80,7 @@ class Kafka(object):
             r'^kafka.logs.dir=.*': 'kafka.logs.dir=%s' % self.dist_config.path('kafka_app_logs'),
         })
 
+        # Configure init script
         template_name = 'upstart.conf'
         template_path = '/etc/init/kafka.conf'
         if host.init_is_systemd():
@@ -95,10 +96,14 @@ class Kafka(object):
             },
         )
 
-        # fix for lxc containers and some corner cases in manual provider
-        # ensure that public_address is resolvable internally by mapping it to the private IP
-        utils.update_kv_host(private_ip, public_address)
+        # Kafka must be able to resolve its hostname to an accessible IP;
+        # set our /etc/hosts and hostname to know-able values.
+        utils.initialize_kv_host()
         utils.manage_etc_hosts()
+        hostname = hookenv.local_unit().replace('/', '-')
+        etc_hostname = Path('/etc/hostname')
+        etc_hostname.write_text(hostname)
+        check_call(['hostname', '-F', etc_hostname])
 
     def open_ports(self):
         for port in self.dist_config.exposed_ports('kafka'):

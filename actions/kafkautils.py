@@ -6,7 +6,7 @@ def get_zookeepers():
     with open("dist.yaml", 'r') as distconf:
         config = yaml.load(distconf)
 
-    cfg = '/'.join((config["dirs"]["kafka_conf"]["path"], 'consumer.properties'))
+    cfg = '/'.join((config["dirs"]["kafka_conf"]["path"], 'server.properties'))
     print(cfg)
     file = open(cfg, "r")
 

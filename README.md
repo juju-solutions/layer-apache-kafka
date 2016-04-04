@@ -14,6 +14,7 @@ relate them as follows:
     juju deploy apache-zookeeper zookeeper
     juju deploy apache-kafka kafka
     juju add-relation kafka zookeeper
+    juju expose kafka  # required if external (non-Juju) clients need to connect
 
 Once deployed, we can list the zookeeper servers that our kafka brokers
 are connected to. The following will list `<ip>:<port>` information for each
