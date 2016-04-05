@@ -3,8 +3,7 @@ import os
 import jujuresources
 from charmhelpers.core import hookenv, templating, host
 from jujubigdata import utils
-from path import Path
-from subprocess import check_call
+from subprocess import check_output
 
 
 class Kafka(object):
@@ -53,9 +52,11 @@ class Kafka(object):
             env['LOG_DIR'] = self.dist_config.path('kafka_app_logs')
 
         # Configure server.properties
-        # note: we set the advertised.host.name below to the public_address
-        # to ensure that external (non-Juju) clients can connect to Kafka
-        public_address = hookenv.unit_get('public-address')
+        # NB: We set the advertised.host.name below to our short hostname
+        # instead of our private ip so external (non-Juju) clients can connect
+        # to kafka (admin will still have to expose kafka and ensure the
+        # external client can resolve the short hostname to our public ip).
+        short_host = check_output(['hostname', '-s']).decode('utf8').strip()
         kafka_port = self.dist_config.port('kafka')
         kafka_server_conf = self.dist_config.path('kafka_conf') / 'server.properties'
         service, unit_num = os.environ['JUJU_UNIT_NAME'].split('/', 1)
@@ -63,15 +64,15 @@ class Kafka(object):
             r'^broker.id=.*': 'broker.id=%s' % unit_num,
             r'^port=.*': 'port=%s' % kafka_port,
             r'^log.dirs=.*': 'log.dirs=%s' % self.dist_config.path('kafka_data_logs'),
-            r'^#?advertised.host.name=.*': 'advertised.host.name=%s' % public_address,
+            r'^#?advertised.host.name=.*': 'advertised.host.name=%s' % short_host,
         })
 
         # Configure producer.properties
         # note: we set the broker list to whatever we advertise our broker to
-        # be (advertised.host.name from above, which is our public_address).
+        # be (advertised.host.name from above, which is our short hostname).
         kafka_producer_conf = self.dist_config.path('kafka_conf') / 'producer.properties'
         utils.re_edit_in_place(kafka_producer_conf, {
-            r'^#?metadata.broker.list=.*': 'metadata.broker.list=%s:%s' % (public_address, kafka_port),
+            r'^#?metadata.broker.list=.*': 'metadata.broker.list=%s:%s' % (short_host, kafka_port),
         })
 
         # Configure log properties
@@ -95,15 +96,6 @@ class Kafka(object):
                 'kafka_bin': '{}/bin'.format(self.dist_config.path('kafka'))
             },
         )
-
-        # Kafka must be able to resolve its hostname to an accessible IP;
-        # set our /etc/hosts and hostname to know-able values.
-        utils.initialize_kv_host()
-        utils.manage_etc_hosts()
-        hostname = hookenv.local_unit().replace('/', '-')
-        etc_hostname = Path('/etc/hostname')
-        etc_hostname.write_text(hostname)
-        check_call(['hostname', '-F', etc_hostname])
 
     def open_ports(self):
         for port in self.dist_config.exposed_ports('kafka'):
