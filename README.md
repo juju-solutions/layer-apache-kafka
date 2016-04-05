@@ -14,7 +14,6 @@ relate them as follows:
     juju deploy apache-zookeeper zookeeper
     juju deploy apache-kafka kafka
     juju add-relation kafka zookeeper
-    juju expose kafka  # required if external (non-Juju) clients need to connect
 
 Once deployed, we can list the zookeeper servers that our kafka brokers
 are connected to. The following will list `<ip>:<port>` information for each
@@ -50,6 +49,35 @@ And finally, we can delete a topic with:
     juju action fetch <id>  # <-- id from above command
 
 
+## Status and Smoke Test
+
+Kafka provides extended status reporting to indicate when it is ready:
+
+    juju status --format=tabular
+
+This is particularly useful when combined with `watch` to track the on-going
+progress of the deployment:
+
+    watch -n 0.5 juju status --format=tabular
+
+The message for each unit will provide information about that unit's state.
+Once they all indicate that they are ready, you can perform a "smoke test"
+to verify that Kafka is working as expected using the built-in `smoke-test`
+action:
+
+    juju action do kafka/0 smoke-test
+
+After a few seconds or so, you can check the results of the smoke test:
+
+    juju action status
+
+You will see `status: completed` if the smoke test was successful, or
+`status: failed` if it was not.  You can get more information on why it failed
+via:
+
+    juju action fetch <action-id>
+
+
 ## Scaling
 
 Creating a cluster with many brokers is as easy as adding more units to your
@@ -76,6 +104,30 @@ You should get a response similar to:
 
     Topic: my-replicated-topic PartitionCount:1 ReplicationFactor:2 Configs:
     Topic: my-replicated-topic Partition: 0 Leader: 2 Replicas: 2,0 Isr: 2,0
+
+
+## Connecting External Clients
+
+By default, this charm does not expose Kafka outside of the provider's network.
+To allow external clients to connect to Kafka, first expose the service:
+
+    juju expose kafka
+
+Next, ensure the external client can resolve the short hostname of the kafka
+unit. A simple way to do this is to add an `/etc/hosts` entry on the external
+kafka client machine. Gather the needed info from juju:
+
+    user@juju-client$ juju run --unit kafka/0 'hostname -s'
+    kafka-0
+    user@juju-client$ juju status --format=yaml kafka/0 | grep public-address
+    public-address: 40.784.149.135
+
+Update `/etc/hosts` on the external kafka client:
+
+    user@kafka-client$ echo "40.784.149.135 kafka-0" | sudo tee -a /etc/hosts
+
+The external kafka client should now be able to access Kafka by using
+`kafka-0:9092` as the broker.
 
 
 ## Deploying in Network-Restricted Environments
