@@ -1,5 +1,14 @@
 import re
+import sys
 import yaml
+
+from charmhelpers.core import hookenv
+
+
+def fail(msg, output):
+    hookenv.action_set({'output': output})
+    hookenv.action_fail(msg)
+    sys.exit()
 
 
 def get_zookeepers():

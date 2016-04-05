@@ -35,6 +35,10 @@ read-topic:
       description: Partition to consume
   required: [topic, partition]
   additionalProperties: false
+smoke-test:
+  description: >
+    Verify that Kafka is working as expected by listing zookeepers, then
+    creating/listing/deleting a topic
 write-topic:
   description: Write to a kafka topic
   params:

@@ -1,32 +1,35 @@
 #!/usr/bin/env python3
-#pylint: disable=C0103
-import sys
 
-try:
-    from charmhelpers.core import hookenv
-    from jujubigdata import utils
-    charm_ready = True
-except ImportError:
-    charm_ready = False
+import kafkautils
+import subprocess
 
-if not charm_ready:
-    # might not have hookenv.action_fail available yet
-    from subprocess import call
-    call(['action-fail', 'Kafka service not yet ready'])
-    sys.exit(1)
+from charmhelpers.core import hookenv, host
+from charms.reactive import is_state
+from jujubigdata import utils
+
+
+if not is_state('kafka.started'):
+    kafkautils.fail('Kafka service not yet ready')
+
 
 # Grab the business
 topic_name = hookenv.action_get('topic')
 data = hookenv.action_get('data')
 
-output = utils.run_as(
-    'kafka', 'kafka-console-producer.sh',
-    '--broker-list', '{}:{}'.format(
-        hookenv.unit_get('public-address'),
-        utils.DistConfig().port('kafka'),
-    ),
-    '--topic', topic_name,
-    capture_output=True,
-    input=bytes(data, 'UTF-8'))
-hookenv.action_set({'output': output})
-sys.exit(0)
+# Write to the topic if kafka is running
+if host.service_available('kafka') and host.service_running('kafka'):
+    host = subprocess.check_output(['hostname', '-s']).decode('utf8').strip()
+    port = utils.DistConfig().port('kafka')
+    zookeepers = kafkautils.get_zookeepers()
+    try:
+        output = utils.run_as('kafka', 'kafka-console-producer.sh',
+                              '--broker-list', '{}:{}'.format(host, port),
+                              '--topic', topic_name,
+                              capture_output=True,
+                              input=bytes(data, 'UTF-8'))
+    except subprocess.CalledProcessError as e:
+        kafkautils.fail('Kafka command failed', e.output)
+    else:
+        hookenv.action_set({'output': output})
+else:
+    kafkautils.fail('Kafka service is not running')

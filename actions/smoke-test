@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+
+import kafkautils
+import subprocess
+
+from charmhelpers.core import hookenv, host
+from charms.reactive import is_state
+from jujubigdata.utils import run_as
+
+
+if not is_state('kafka.started'):
+    kafkautils.fail('Kafka service not yet ready')
+
+
+# Define smoke test params
+topic_name = "smoketest"
+topic_partitions = 1
+topic_replication = 1
+
+# Smoke only when kafka is running
+if host.service_available('kafka') and host.service_running('kafka'):
+    # List ZKs
+    zookeepers = kafkautils.get_zookeepers()
+    if not zookeepers:
+        kafkautils.fail('No zookeeper.connect string found')
+
+    # Create a topic
+    try:
+        output = run_as('kafka', 'kafka-topics.sh',
+                        '--zookeeper', zookeepers, '--create',
+                        '--topic', topic_name,
+                        '--partitions', topic_partitions,
+                        '--replication-factor', topic_replication,
+                        capture_output=True)
+    except subprocess.CalledProcessError as e:
+        kafkautils.fail('Kafka command failed', e.output)
+
+    # List topics
+    try:
+        output = run_as('kafka', '/usr/lib/kafka/bin/kafka-topics.sh',
+                        '--zookeeper', zookeepers, '--list',
+                        capture_output=True)
+    except subprocess.CalledProcessError as e:
+        kafkautils.fail('Kafka command failed', e.output)
+
+    # Delete the topic
+    try:
+        output = run_as('kafka', 'kafka-topics.sh',
+                        '--zookeeper', zookeepers, '--delete',
+                        '--topic', topic_name,
+                        capture_output=True)
+    except subprocess.CalledProcessError as e:
+        kafkautils.fail('Kafka command failed', e.output)
+
+    # If we haven't failed yet, we passed
+    hookenv.action_set({'outcome': 'success'})
+else:
+    kafkautils.fail('Kafka service is not running')

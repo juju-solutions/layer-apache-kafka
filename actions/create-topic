@@ -1,36 +1,35 @@
 #!/usr/bin/env python3
-import sys
+
 import kafkautils
+import subprocess
 
-try:
-    from charmhelpers.core import host, hookenv
-    from jujubigdata import utils
-    charm_ready = True
-except ImportError:
-    charm_ready = False
+from charmhelpers.core import hookenv, host
+from charms.reactive import is_state
+from jujubigdata.utils import run_as
 
-if not charm_ready:
-    # might not have hookenv.action_fail available yet
-    from subprocess import call
-    call(['action-fail', 'Kafka service not yet ready'])
-    sys.exit(1)
+
+if not is_state('kafka.started'):
+    kafkautils.fail('Kafka service not yet ready')
+
 
 # Grab the business
 topic_name = hookenv.action_get('topic')
 topic_partitions = hookenv.action_get('partitions')
 topic_replication = hookenv.action_get('replication')
 
-# Create the topic if we've got zookeepers; otherwise fail.
+# Create the topic if kafka is running
 if host.service_available('kafka') and host.service_running('kafka'):
     zookeepers = kafkautils.get_zookeepers()
-    output = utils.run_as('kafka', 'kafka-topics.sh',
-                          '--zookeeper', zookeepers, '--create',
-                          '--topic',  topic_name,
-                          '--partitions', topic_partitions,
-                          '--replication-factor', topic_replication,
-                          capture_output=True)
-    hookenv.action_set({'output': output})
-    sys.exit(0)
+    try:
+        output = run_as('kafka', 'kafka-topics.sh',
+                        '--zookeeper', zookeepers, '--create',
+                        '--topic', topic_name,
+                        '--partitions', topic_partitions,
+                        '--replication-factor', topic_replication,
+                        capture_output=True)
+    except subprocess.CalledProcessError as e:
+        kafkautils.fail('Kafka command failed', e.output)
+    else:
+        hookenv.action_set({'output': output})
 else:
-    hookenv.action_fail('Zookeeper relation is not present/ready')
-    sys.exit(1)
+    kafkautils.fail('Kafka service is not running')
