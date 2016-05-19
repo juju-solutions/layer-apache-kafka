@@ -17,7 +17,7 @@ class TestDeploy(unittest.TestCase):
         cls.d = amulet.Deployment(series='trusty')
         cls.d.add('kafka', 'apache-kafka')
         cls.d.add('zookeeper', 'apache-zookeeper')
-        cls.d.relate('kafka:zookeeper', 'zookeeper:zookeeper')
+        cls.d.relate('kafka:zookeeper', 'zookeeper:zkclient')
 
         cls.d.setup(timeout=900)
         cls.d.sentry.wait(timeout=1800)
