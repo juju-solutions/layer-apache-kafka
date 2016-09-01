@@ -1,9 +1,19 @@
 import os
 
 import jujuresources
+import ipaddress
+import netifaces
 from charmhelpers.core import hookenv, templating, host
 from jujubigdata import utils
 from subprocess import check_output
+
+
+class KafkaException(Exception):
+    '''
+    Exception to raise in the case where we run into trouble
+    configuring or running Kafka.
+
+    '''
 
 
 class Kafka(object):
@@ -101,7 +111,7 @@ class Kafka(object):
         for port in self.dist_config.exposed_ports('kafka'):
             hookenv.open_port(port)
 
-    def configure_kafka(self, zk_units):
+    def configure_kafka(self, zk_units, network_interface=None):
         # Get ip:port data from our connected zookeepers
         zks = []
         for unit in zk_units:
@@ -122,6 +132,13 @@ class Kafka(object):
             r'^zookeeper.connect=.*': 'zookeeper.connect=%s' % zk_connect,
         })
 
+        # Possibly bind a network interface
+        if network_interface:
+            utils.re_edit_in_place(cfg, {
+                r'^#?host.name=.*': 'host.name={}'.format(
+                    self.get_ip_for_interface(network_interface)),
+            })
+
     def restart(self):
         self.stop()
         self.start()
@@ -135,3 +152,48 @@ class Kafka(object):
     def cleanup(self):
         self.dist_config.remove_users()
         self.dist_config.remove_dirs()
+
+    def get_ip_for_interface(self, network_interface):
+        """
+        Helper to return the ip address of this machine on a specific
+        interface.
+
+        @param str network_interface: either the name of the
+        interface, or a CIDR range, in which we expect the interface's
+        ip to fall. Also accepts 0.0.0.0 (and variants, like 0/0) as a
+        special case, which will simply return what you passed in.
+
+        """
+        if network_interface.startswith('0') or network_interface == '::':
+            # Allow users to reset the charm to listening on any
+            # interface.  Allow operators to specify this however they
+            # wish (0.0.0.0, ::, 0/0, etc.).
+            return network_interface
+
+        # Is this a CIDR range, or an interface name?
+        is_cidr = len(network_interface.split(".")) == 4 or len(
+            network_interface.split(":")) == 8
+
+        if is_cidr:
+            interfaces = netifaces.interfaces()
+            for interface in interfaces:
+                try:
+                    ip = netifaces.ifaddresses(interface)[2][0]['addr']
+                except KeyError:
+                    continue
+
+                if ipaddress.ip_address(ip) in ipaddress.ip_network(
+                        network_interface):
+                    return ip
+
+            raise KafkaException(
+                u"This machine has no interfaces in CIDR range {}".format(
+                    network_interface))
+        else:
+            try:
+                ip = netifaces.ifaddresses(network_interface)[2][0]['addr']
+            except ValueError:
+                raise KafkaException(
+                    u"This machine does not have an interface '{}'".format(
+                        network_interface))
+            return ip
