@@ -177,21 +177,23 @@ class Kafka(object):
         if is_cidr:
             interfaces = netifaces.interfaces()
             for interface in interfaces:
-                try:
-                    ip = netifaces.ifaddresses(interface)[2][0]['addr']
-                except KeyError:
-                    continue
+                for ip_version in netifaces.AF_INET, netifaces.AF_INET6:
+                    try:
+                        ip = netifaces.ifaddresses(
+                            interface)[ip_version][0]['addr']
+                    except KeyError:
+                        continue
 
-                if ipaddress.ip_address(ip) in ipaddress.ip_network(
-                        network_interface):
-                    return ip
+                    if ipaddress.ip_address(ip) in ipaddress.ip_network(
+                            network_interface):
+                        return ip
 
             raise KafkaException(
                 u"This machine has no interfaces in CIDR range {}".format(
                     network_interface))
         else:
             try:
-                ip = netifaces.ifaddresses(network_interface)[2][0]['addr']
+                ip = netifaces.ifaddresses(network_interface)[netifaces.AF_INET][0]['addr']
             except ValueError:
                 raise KafkaException(
                     u"This machine does not have an interface '{}'".format(

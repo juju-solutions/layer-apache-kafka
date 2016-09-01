@@ -35,8 +35,13 @@ class TestDeploy(unittest.TestCase):
         '''
         self.d.log.debug("Binding Kafka to eth0")
         self.d.configure('kafka', {'network_interface': 'eth0'})
-        self.d.sentry.wait_for_messages({'kafka': 'Server config changed: restarting Kafka'}, timeout=60)
-        self.d.sentry.wait_for_messages({'kafka': 'Ready'}, timeout=600)
+        try:
+            self.d.sentry.wait_for_messages({'kafka': 'Server config changed: restarting Kafka'}, timeout=60)
+            self.d.sentry.wait_for_messages({'kafka': 'Ready'}, timeout=600)
+        except amulet.TimeoutError:
+            # We may have just missed the message. Check to see if
+            # things worked.
+            pass
 
         self.d.log.debug("Checking kafka bindings ...")
         ret = self.unit.run(
@@ -57,8 +62,13 @@ class TestDeploy(unittest.TestCase):
         """
         self.d.log.debug("Binding Kafka to 0.0.0.0")
         self.d.configure('kafka', {'network_interface': '0.0.0.0'})
-        self.d.sentry.wait_for_messages({'kafka': 'Server config changed: restarting Kafka'}, timeout=60)
-        self.d.sentry.wait_for_messages({'kafka': 'Ready'}, timeout=600)
+        try:
+            self.d.sentry.wait_for_messages({'kafka': 'Server config changed: restarting Kafka'}, timeout=60)
+            self.d.sentry.wait_for_messages({'kafka': 'Ready'}, timeout=600)
+        except amulet.TimeoutError:
+            # We may have just missed the message. Check to see if
+            # things worked.
+            pass
 
         self.d.log.debug("Checking reset bindings ...")
         ret = self.unit.run(
