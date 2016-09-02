@@ -8,14 +8,6 @@ from jujubigdata import utils
 from subprocess import check_output
 
 
-class KafkaException(Exception):
-    '''
-    Exception to raise in the case where we run into trouble
-    configuring or running Kafka.
-
-    '''
-
-
 class Kafka(object):
     def __init__(self, dist_config=None):
         self.dist_config = dist_config or utils.DistConfig()
@@ -66,7 +58,9 @@ class Kafka(object):
         # instead of our private ip so external (non-Juju) clients can connect
         # to kafka (admin will still have to expose kafka and ensure the
         # external client can resolve the short hostname to our public ip).
-        short_host = check_output(['hostname', '-s']).decode('utf8').strip()
+        short_host = hookenv.config().get('hostname')
+        if not short_host:
+            short_host = check_output(['hostname', '-s']).decode('utf8').strip()
         kafka_port = self.dist_config.port('kafka')
         kafka_server_conf = self.dist_config.path('kafka_conf') / 'server.properties'
         service, unit_num = os.environ['JUJU_UNIT_NAME'].split('/', 1)
@@ -136,7 +130,7 @@ class Kafka(object):
         if network_interface:
             utils.re_edit_in_place(cfg, {
                 r'^#?host.name=.*': 'host.name={}'.format(
-                    self.get_ip_for_interface(network_interface)),
+                    get_ip_for_interface(network_interface)),
             })
 
     def restart(self):
@@ -153,49 +147,74 @@ class Kafka(object):
         self.dist_config.remove_users()
         self.dist_config.remove_dirs()
 
-    def get_ip_for_interface(self, network_interface):
-        """
-        Helper to return the ip address of this machine on a specific
-        interface.
 
-        @param str network_interface: either the name of the
-        interface, or a CIDR range, in which we expect the interface's
-        ip to fall. Also accepts 0.0.0.0 (and variants, like 0/0) as a
-        special case, which will simply return what you passed in.
+#
+# Helpers
+#
 
-        """
-        if network_interface.startswith('0') or network_interface == '::':
-            # Allow users to reset the charm to listening on any
-            # interface.  Allow operators to specify this however they
-            # wish (0.0.0.0, ::, 0/0, etc.).
-            return network_interface
+class BigDataError(Exception):
+    pass
 
-        # Is this a CIDR range, or an interface name?
-        is_cidr = len(network_interface.split(".")) == 4 or len(
-            network_interface.split(":")) == 8
 
-        if is_cidr:
-            interfaces = netifaces.interfaces()
-            for interface in interfaces:
-                for ip_version in netifaces.AF_INET, netifaces.AF_INET6:
-                    try:
-                        ip = netifaces.ifaddresses(
-                            interface)[ip_version][0]['addr']
-                    except KeyError:
-                        continue
+def get_ip_for_interface(network_interface):
+    """
+    Helper to return the ip address of this machine on a specific
+    interface.
 
-                    if ipaddress.ip_address(ip) in ipaddress.ip_network(
-                            network_interface):
-                        return ip
+    @param str network_interface: either the name of the
+    interface, or a CIDR range, in which we expect the interface's
+    ip to fall. Also accepts 0.0.0.0 (and variants, like 0/0) as a
+    special case, which will simply return what you passed in.
 
-            raise KafkaException(
-                u"This machine has no interfaces in CIDR range {}".format(
+    """
+    if network_interface.startswith('0') or network_interface == '::':
+        # Allow users to reset the charm to listening on any
+        # interface.  Allow operators to specify this however they
+        # wish (0.0.0.0, ::, 0/0, etc.).
+        return network_interface
+
+    # Is this a CIDR range, or an interface name?
+    is_cidr = len(network_interface.split(".")) == 4 or len(
+        network_interface.split(":")) == 8
+
+    if is_cidr:
+        interfaces = netifaces.interfaces()
+        for interface in interfaces:
+            for ip_version in netifaces.AF_INET, netifaces.AF_INET6:
+                try:
+                    ip = netifaces.ifaddresses(
+                        interface)[ip_version][0]['addr']
+                except KeyError:
+                    continue
+
+                if ip.startswith('fe80'):
+                    # ipaddress doesn't consider fe80::... to be an ip
+                    # address, even though interfaces on physical
+                    # hardware will list this as their ipv6 ip. Just
+                    # skip over this issue for now.
+                    continue
+
+                # Check to see if the ip address is in the
+                # range. Include a rather silly hack to make ipaddress
+                # happy with the unicode string it expects in both
+                # Python 2 and 3. (TODO: import unicode_literals from
+                # __future__, and verify that it doesn't break other
+                # things in this module.)
+                if ipaddress.ip_address(
+                        ip.encode('utf-8').decode('utf-8')
+                ) in ipaddress.ip_network(
+                    network_interface.encode('utf-8').decode('utf-8')
+                ):
+                    return ip
+
+        raise BigDataError(
+            u"This machine has no interfaces in CIDR range {}".format(
+                network_interface))
+    else:
+        try:
+            ip = netifaces.ifaddresses(network_interface)[netifaces.AF_INET][0]['addr']
+        except ValueError:
+            raise BigDataError(
+                u"This machine does not have an interface '{}'".format(
                     network_interface))
-        else:
-            try:
-                ip = netifaces.ifaddresses(network_interface)[netifaces.AF_INET][0]['addr']
-            except ValueError:
-                raise KafkaException(
-                    u"This machine does not have an interface '{}'".format(
-                        network_interface))
-            return ip
+        return ip
