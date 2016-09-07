@@ -77,14 +77,9 @@ def stop_kafka_waiting_for_zookeeper_ready():
 @when('client.joined', 'zookeeper.ready')
 def serve_client(client, zookeeper):
     kafka_port = DistConfig().port('kafka')
-    host = hookenv.config().get('hostname')
-    if not host:
-        # If we've attempted to bind to a spefic ip address, and we
-        # haven't set a hostname that will resolve to that ip, just
-        # send the ip address along.
-        network_interface = hookenv.config().get('network_interface')
-        if network_interface:
-            host = get_ip_for_interface(network_interface)
+    network_interface = hookenv.config().get('network_interface')
+    if network_interface:
+        host = get_ip_for_interface(network_interface)
 
     client.send_connection(kafka_port, host=host)
     client.send_zookeepers(zookeeper.zookeepers())
