@@ -1,9 +1,11 @@
 import os
+import shutil
 
 import jujuresources
 import ipaddress
 import netifaces
 from charmhelpers.core import hookenv, templating, host
+from charmhelpers import fetch
 from jujubigdata import utils
 from subprocess import check_output
 
@@ -14,14 +16,29 @@ class Kafka(object):
         self.resources = {
             'kafka': 'kafka-%s' % utils.cpu_arch(),
         }
-        self.verify_resources = utils.verify_resources(*self.resources.values())
+
+    def verify_resources(self):
+        if hookenv.resource_get(self.resources['kafka']):
+            return True
+        else:
+            return utils.verify_resources(*self.resources.values())()
 
     def install(self):
         self.dist_config.add_users()
         self.dist_config.add_dirs()
-        jujuresources.install(self.resources['kafka'],
-                              destination=self.dist_config.path('kafka'),
-                              skip_top_level=True)
+        filename = hookenv.resource_get(self.resources['kafka'])
+        if filename:
+            extracted = fetch.install_remote('file://' + filename)
+            # get the nested dir
+            extracted = os.path.join(extracted, os.listdir(extracted)[0])
+            destination = self.dist_config.path('kafka')
+            if os.path.exists(destination):
+                shutil.rmtree(destination)
+            shutil.copytree(extracted, destination)
+        else:
+            jujuresources.install(self.resources['kafka'],
+                                  destination=self.dist_config.path('kafka'),
+                                  skip_top_level=True)
         self.setup_kafka_config()
 
     def setup_kafka_config(self):
