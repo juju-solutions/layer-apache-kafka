@@ -58,8 +58,10 @@ class Kafka(object):
         # instead of our private ip so external (non-Juju) clients can connect
         # to kafka (admin will still have to expose kafka and ensure the
         # external client can resolve the short hostname to our public ip).
-        short_host = hookenv.config().get('hostname')
-        if not short_host:
+        network_interface = hookenv.config('network_interface')
+        if network_interface:
+            short_host = get_ip_for_interface(network_interface)
+        else:
             short_host = check_output(['hostname', '-s']).decode('utf8').strip()
         kafka_port = self.dist_config.port('kafka')
         kafka_server_conf = self.dist_config.path('kafka_conf') / 'server.properties'

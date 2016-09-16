@@ -17,13 +17,3 @@ options:
             network interface. The charm will translate that into a
             specific IP address to bind to, and drop that into the
             Kafka config. To reset the bindings, pass in 0.0.0.0.
-    hostname:
-        type: string
-        default: ''
-        description: |
-            Specify the hostname that kafka will set as its advertised
-            hostname. Note that all clients connecting to kafka will
-            use this hostname. We\'ll setup a good default hostname
-            for you, based on your cloud provider\'s DNS settings. You
-            should set this manually only if you know what you\'re
-            doing!
