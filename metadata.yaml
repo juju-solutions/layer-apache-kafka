@@ -29,7 +29,7 @@ requires:
   zookeeper:
     interface: zookeeper
 resources:
-  kafka-x86_64:
+  kafka:
     type: "file"
     filename: "kafka.tgz"
     description: "Apache Kafka release"

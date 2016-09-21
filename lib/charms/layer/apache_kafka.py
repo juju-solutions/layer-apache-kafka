@@ -18,16 +18,16 @@ class Kafka(object):
         }
 
     def verify_resources(self):
-        if hookenv.resource_get(self.resources['kafka']):
-            return True
-        else:
+        try:
+            return hookenv.resource_get('kafka')
+        except NotImplementedError:
             return utils.verify_resources(*self.resources.values())()
 
     def install(self):
         self.dist_config.add_users()
         self.dist_config.add_dirs()
-        filename = hookenv.resource_get(self.resources['kafka'])
-        if filename:
+        try:
+            filename = hookenv.resource_get('kafka')
             extracted = fetch.install_remote('file://' + filename)
             # get the nested dir
             extracted = os.path.join(extracted, os.listdir(extracted)[0])
@@ -35,7 +35,7 @@ class Kafka(object):
             if os.path.exists(destination):
                 shutil.rmtree(destination)
             shutil.copytree(extracted, destination)
-        else:
+        except NotImplementedError:
             jujuresources.install(self.resources['kafka'],
                                   destination=self.dist_config.path('kafka'),
                                   skip_top_level=True)
