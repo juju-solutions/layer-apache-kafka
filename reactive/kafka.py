@@ -13,6 +13,8 @@ def install_kafka(*args):
         kafka.install()
         kafka.open_ports()
         set_state('kafka.installed')
+    else:
+        hookenv.status_set('blocked', 'Kafka resource not available')
 
 
 @when('kafka.installed')
